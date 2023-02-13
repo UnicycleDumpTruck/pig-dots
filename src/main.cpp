@@ -7,53 +7,51 @@
 #include <pinout.h>
 
 SoftwareSerial link(4,5);
-// char old_count_text = "";
-// char count_text = "";
-// how much serial data we expect before a newline
-const unsigned int MAX_INPUT = 50;
-
 
 // SET A VARIABLE TO STORE THE LED STATE
 int ledState = LOW;
 
+const char startOfNumberDelimiter = '<';
+const char endOfNumberDelimiter   = '>';
 
-void process_data (const char * data)
+void processNumber (const long n)
   {
-  // for now just display it
-  // (but you could compare it to some value, convert to an integer, etc.)
-  Serial.println (data);
-  }  // end of process_data
+  Serial.println (n);
+  }  // end of processNumber
   
-void processIncomingByte (const byte inByte)
+void processInput ()
   {
-  static char input_line [MAX_INPUT];
-  static unsigned int input_pos = 0;
-
-  switch (inByte)
+  static long receivedNumber = 0;
+  static boolean negative = false;
+  
+  byte c = link.read ();
+  switch (c)
     {
-
-    case '\n':   // end of text
-      input_line [input_pos] = 0;  // terminating null byte
       
-      // terminator reached! process input_line here ...
-      process_data (input_line);
+    case endOfNumberDelimiter:  
+      if (negative) 
+        processNumber (- receivedNumber); 
+      else
+        processNumber (receivedNumber); 
+
+    // fall through to start a new number
+    case startOfNumberDelimiter: 
+      receivedNumber = 0; 
+      negative = false;
+      break;
       
-      // reset buffer for next time
-      input_pos = 0;  
+    case '0' ... '9': 
+      receivedNumber *= 10;
+      receivedNumber += c - '0';
       break;
-
-    case '\r':   // discard carriage return
+      
+    case '-':
+      negative = true;
       break;
+      
+    } // end of switch  
+  }  // end of processInput
 
-    default:
-      // keep adding if not full ... allow for terminating null byte
-      if (input_pos < (MAX_INPUT - 1))
-        input_line [input_pos++] = inByte;
-      break;
-
-    }  // end of switch
-   
-  } // end of processIncomingByte  
 
 
 
@@ -80,7 +78,7 @@ void setup()
 
   // Watchdog.enable(4000);
 
-  link.begin(300);
+  link.begin(9600);
   delay(2000);
   link.print('b');
   delay(20);
@@ -98,21 +96,9 @@ void setup()
 
 void loop()
 {
-  while (link.available() == 0) {}
-  Serial.println("=========================================================================");
-  processIncomingByte (link.read ());
-  // byte count = link.read();
-  // // int count_int = link.parseInt();
-  // // Serial.println(count_int);
-  // // if(count > 0)
-  // // { 
-  // Serial.print("count received: ");
-  // Serial.println(count);
-  // ledState = !ledState;
-  // digitalWrite(LED_PIN, ledState);
-  // link.print(count);
-  // }
-
-
+  while (link.available ())
+  {
+    processInput();
+  }
   // Watchdog.reset();
 }
