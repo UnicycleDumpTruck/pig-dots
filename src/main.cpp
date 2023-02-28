@@ -48,7 +48,7 @@ void setDotDisplay(int num_dots)
 void processNumber (const long n)
   {
   Serial.println (n);
-  if((0 < n) && (n < (NUM_PIXELS + 1)))
+  if((0 <= n) && (n <= NUM_PIXELS))
   {
     setDotDisplay(n);
   }
